@@ -37,18 +37,52 @@ func main() {
 		}
 		os.Exit(0)
 	} else {
+		UnsetIptable(Port)
 		SetIptable(Port)
 		var wg sync.WaitGroup
-		p, _ := ants.NewPoolWithFunc(10, func(i interface{}) {
-			packetHandle(i.(int)*2 + 2)
+		p1, _ := ants.NewPoolWithFunc(128, func(i interface{}) {
+			packetHandle(i.(int))
 			wg.Done()
 		})
-		defer p.Release()
+		defer p1.Release()
 		// Submit tasks one by one.
-		for i := 0; i < 4; i++ {
-			log.Println("Starting Task ", i)
+		log.Println("Starting Task p1")
+		for i := 1000; i < 1128; i++ {
 			wg.Add(1)
-			_ = p.Invoke(int(i))
+			_ = p1.Invoke(int(i))
+		}
+		p2, _ := ants.NewPoolWithFunc(128, func(i interface{}) {
+			packetHandle(i.(int))
+			wg.Done()
+		})
+		defer p2.Release()
+		// Submit tasks one by one.
+		log.Println("Starting Task p2")
+		for i := 2000; i < 2128; i++ {
+			wg.Add(1)
+			_ = p2.Invoke(int(i))
+		}
+		p3, _ := ants.NewPoolWithFunc(128, func(i interface{}) {
+			packetHandle(i.(int))
+			wg.Done()
+		})
+		defer p3.Release()
+		// Submit tasks one by one.
+		log.Println("Starting Task p3")
+		for i := 3000; i < 3128; i++ {
+			wg.Add(1)
+			_ = p3.Invoke(int(i))
+		}
+		p4, _ := ants.NewPoolWithFunc(128, func(i interface{}) {
+			packetHandle(i.(int))
+			wg.Done()
+		})
+		defer p4.Release()
+		// Submit tasks one by one.
+		log.Println("Starting Task p4")
+		for i := 4000; i < 4128; i++ {
+			wg.Add(1)
+			_ = p4.Invoke(int(i))
 		}
 		wg.Wait()
 	}
