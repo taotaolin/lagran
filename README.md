@@ -5,7 +5,4 @@
 "[TCP:flags:PA]-tamper{TCP:window:replace:0}-|"
 "[TCP:flags:FA]-tamper{TCP:window:replace:0}-|"
 ```
-- 默认四条规则全部开启，具体使用方法参考`./lagran -h`。
-- 例如：开启第一条规则并设置window为2，同时关闭2、3、4条规则
-```./lagran -debug -p 80 -sa=true -wsa 2 -a=false -pa=false -fa=false```
-- 注意：本小程序依赖libpcap-dev、libnetfilter-queue-dev、iptables等使用之前请先安装。
+- 具体用法：https://www.444.run
