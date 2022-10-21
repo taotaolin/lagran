@@ -8,6 +8,8 @@ import (
 	"github.com/google/gopacket/layers"
 	"log"
 	"net"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -25,6 +27,7 @@ func packetHandle(queueNum int) {
 		fmt.Println("could not open nfqueue socket:", err)
 		return
 	}
+
 	defer nf.Close()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -48,44 +51,62 @@ func packetHandle(queueNum int) {
 		}
 		if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
 			tcp, _ := tcpLayer.(*layers.TCP)
-			var ok1 bool = SaEnable && tcp.SYN && tcp.ACK
-			var ok2 bool = AEnable && tcp.ACK && !tcp.PSH && !tcp.FIN && !tcp.SYN && !tcp.RST
-			var ok3 bool = PaEnable && tcp.PSH && tcp.ACK
-			var ok4 bool = FaEnable && tcp.FIN && tcp.ACK
-			var windowSize uint16
-			if ok1 || ok2 || ok3 || ok4 {
-				if ok1 {
-					windowSize = WindowSa
-					log.Println("Handle SYN=1 and ACK=1")
+			ports := strings.Split(Port, ",")
+			reg := regexp.MustCompile(`\d+`)
+			sport := reg.FindString(tcp.SrcPort.String())
+			var matchedPort bool = false
+
+			for _, port := range ports {
+				if port == sport {
+					matchedPort = true
+					break
 				}
-				if ok2 {
-					windowSize = WindowA
-					log.Println("Handle ACK=1")
+			}
+			if matchedPort {
+				var ok1 bool = SaEnable && tcp.SYN && tcp.ACK
+				var ok2 bool = AEnable && tcp.ACK && !tcp.PSH && !tcp.FIN && !tcp.SYN && !tcp.RST
+				var ok3 bool = PaEnable && tcp.PSH && tcp.ACK
+				var ok4 bool = FaEnable && tcp.FIN && tcp.ACK
+				var windowSize uint16
+				if ok1 || ok2 || ok3 || ok4 {
+					if ok1 {
+						windowSize = WindowSa
+						log.Println("Handle SYN=1 and ACK=1")
+					}
+					if ok2 {
+						windowSize = WindowA
+						log.Println("Handle ACK=1")
+					}
+					if ok3 {
+						windowSize = WindowPa
+						log.Println("Handle PSH=1 and ACK=1")
+					}
+					if ok4 {
+						windowSize = WindowFa
+						log.Println("Handle FIN=1 and ACK=1")
+					}
+					packet.TransportLayer().(*layers.TCP).Window = windowSize
+					err := packet.TransportLayer().(*layers.TCP).SetNetworkLayerForChecksum(packet.NetworkLayer())
+					if err != nil {
+						log.Fatalf("SetNetworkLayerForChecksum error: %v", err)
+					}
+					buffer := gopacket.NewSerializeBuffer()
+					options := gopacket.SerializeOptions{
+						ComputeChecksums: true,
+						FixLengths:       true,
+					}
+					if err := gopacket.SerializePacket(buffer, options, packet); err != nil {
+						log.Fatalf("SerializePacket error: %v", err)
+					}
+					packetBytes := buffer.Bytes()
+					log.Printf("Set TCP window size to %d", windowSize)
+					err = nf.SetVerdictModPacket(id, nfqueue.NfAccept, packetBytes)
+					if err != nil {
+						log.Fatalf("SetVerdictModified error: %v", err)
+					}
+					return 0
 				}
-				if ok3 {
-					windowSize = WindowPa
-					log.Println("Handle PSH=1 and ACK=1")
-				}
-				if ok4 {
-					windowSize = WindowFa
-					log.Println("Handle FIN=1 and ACK=1")
-				}
-				packet.TransportLayer().(*layers.TCP).Window = windowSize
-				err := packet.TransportLayer().(*layers.TCP).SetNetworkLayerForChecksum(packet.NetworkLayer())
-				if err != nil {
-					log.Fatalf("SetNetworkLayerForChecksum error: %v", err)
-				}
-				buffer := gopacket.NewSerializeBuffer()
-				options := gopacket.SerializeOptions{
-					ComputeChecksums: true,
-					FixLengths:       true,
-				}
-				if err := gopacket.SerializePacket(buffer, options, packet); err != nil {
-					log.Fatalf("SerializePacket error: %v", err)
-				}
-				packetBytes := buffer.Bytes()
-				log.Printf("Set TCP window size to %d", windowSize)
-				err = nf.SetVerdictModPacket(id, nfqueue.NfAccept, packetBytes)
+				err := nf.SetVerdict(id, nfqueue.NfAccept)
 				if err != nil {
 					log.Fatalf("SetVerdictModified error: %v", err)
 				}

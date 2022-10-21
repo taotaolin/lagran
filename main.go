@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/panjf2000/ants/v2"
 	"io/ioutil"
 	"log"
 	"os"
@@ -36,36 +37,19 @@ func main() {
 		}
 		os.Exit(0)
 	} else {
-		UnsetIptable(Port)
 		SetIptable(Port)
-		p := NewPool()
-		StartPool(p)
 		var wg sync.WaitGroup
-		wg.Add(4)
-		task1 := func() {
-			log.Println("Starting goroutine 1.")
-			packetHandle(2)
+		p, _ := ants.NewPoolWithFunc(10, func(i interface{}) {
+			packetHandle(i.(int)*2 + 2)
 			wg.Done()
+		})
+		defer p.Release()
+		// Submit tasks one by one.
+		for i := 0; i < 4; i++ {
+			log.Println("Starting Task ", i)
+			wg.Add(1)
+			_ = p.Invoke(int(i))
 		}
-		task2 := func() {
-			log.Println("Starting goroutine 2.")
-			defer wg.Done()
-			packetHandle(4)
-		}
-		task3 := func() {
-			log.Println("Starting goroutine 3.")
-			packetHandle(6)
-			wg.Done()
-		}
-		task4 := func() {
-			log.Println("Starting goroutine 4.")
-			defer wg.Done()
-			packetHandle(8)
-		}
-		p.Submit(task1)
-		p.Submit(task2)
-		p.Submit(task3)
-		p.Submit(task4)
 		wg.Wait()
 	}
 }

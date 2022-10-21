@@ -18,7 +18,7 @@ var Daemon bool
 var Forever bool
 
 func InitParams() (string, bool, uint16, bool, uint16, bool, uint16, bool, uint16, bool, bool, bool) {
-	flag.StringVar(&Port, "p", "80", "The port of geneva.")
+	flag.StringVar(&Port, "p", "80", "The port of geneva, multi ports should be like \"80,443\"")
 
 	flag.BoolVar(&SaEnable, "sa", true, "Enable to handle the packet when TCP flag SYN and ACK are 1.")
 	var wsa int

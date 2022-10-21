@@ -6,6 +6,7 @@ require (
 	github.com/coreos/go-iptables v0.6.0
 	github.com/florianl/go-nfqueue v1.3.1
 	github.com/google/gopacket v1.1.19
+	github.com/panjf2000/ants/v2 v2.5.0
 )
 
 require (
