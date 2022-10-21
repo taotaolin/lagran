@@ -1,16 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"github.com/coreos/go-iptables/iptables"
-	"os"
+	"log"
 )
 
 func SetIptable(sport string) {
 	ipt, err := iptables.New()
 	if err != nil {
-		fmt.Printf("Iptabels new error:%v", err)
-		os.Exit(1)
+		log.Fatalf("Iptabels new error:%v", err)
 	}
 	if SaEnable {
 		_ = ipt.AppendUnique("filter", "OUTPUT", "-p", "tcp", "-m", "multiport", "--sport", sport, "--tcp-flags", "SYN,RST,ACK,FIN,PSH", "SYN,ACK", "-j", "NFQUEUE", "--queue-balance", "1000:1127")
@@ -28,8 +26,7 @@ func SetIptable(sport string) {
 func UnsetIptable(sport string) {
 	ipt, err := iptables.New()
 	if err != nil {
-		fmt.Printf("Iptabels new error:%v", err)
-		os.Exit(1)
+		log.Fatalf("Iptabels new error:%v", err)
 	}
 	if SaEnable {
 		_ = ipt.Delete("filter", "OUTPUT", "-p", "tcp", "-m", "multiport", "--sport", sport, "--tcp-flags", "SYN,RST,ACK,FIN,PSH", "SYN,ACK", "-j", "NFQUEUE", "--queue-balance", "1000:1127")
